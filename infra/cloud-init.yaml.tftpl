@@ -1,7 +1,7 @@
 #cloud-config
 # Primeiro boot da instância (Amazon Linux 2023, ARM64). Gerado pelo Terraform.
 
-package_update: true
+# Sem package_update: a AMI já vem atualizada e processar o repositório inteiro estoura a RAM.
 packages:
   - docker
   - sqlite
@@ -60,18 +60,21 @@ write_files:
       [Install]
       WantedBy=timers.target
 
-runcmd:
-  # Swap: com 512 MB de RAM ele absorve os picos (migrations, otimização de imagens).
+# O swap precisa existir ANTES de instalar pacotes: com ~412 MB de RAM úteis o dnf é morto por
+# falta de memória (OOM). bootcmd roda no início do boot, antes dos módulos de pacotes.
+bootcmd:
   - |
     if ! swapon --show | grep -q /swapfile; then
-      dd if=/dev/zero of=/swapfile bs=1M count=${swap_size_mb}
+      [ -f /swapfile ] || dd if=/dev/zero of=/swapfile bs=1M count=${swap_size_mb}
       chmod 600 /swapfile
       mkswap /swapfile
       swapon /swapfile
-      echo '/swapfile none swap sw 0 0' >> /etc/fstab
+      grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
       echo 'vm.swappiness=10' > /etc/sysctl.d/99-swap.conf
       sysctl -p /etc/sysctl.d/99-swap.conf
     fi
+
+runcmd:
   - mkdir -p /data /opt/artur-dev
   - chown 1001:1001 /data
   - systemctl enable --now docker

@@ -20,6 +20,11 @@ CONFIG_DIR=/opt/artur-dev
 
 log() { printf '[artur-deploy] %s\n' "$*"; }
 
+# Logo após o primeiro boot o cloud-init ainda pode estar instalando o Docker.
+log "aguardando o cloud-init terminar"
+cloud-init status --wait >/dev/null 2>&1 || true
+command -v docker >/dev/null || { log "docker não instalado (veja /var/log/cloud-init-output.log)"; exit 1; }
+
 ENV_FILE="$(mktemp /run/artur-dev.env.XXXXXX)"
 trap 'rm -f "$ENV_FILE"' EXIT
 
