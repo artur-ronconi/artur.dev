@@ -115,15 +115,12 @@ Aba **Variables**:
 
 As chaves precisam ser **secrets**, não variáveis: variáveis não são mascaradas nos logs.
 
-**Settings → Environments → New environment → `production`**: adicione a si mesmo em *Required
-reviewers*. Os jobs `apply` e `destroy` esperam essa aprovação.
-
 ## 3. Criar a infraestrutura
 
 **Actions → Terraform → Run workflow**
 
 1. `action: plan` — confira o resumo do plano.
-2. `action: apply` — aprove o environment `production`. Ao final o resumo mostra `public_ip`,
+2. `action: apply` — roda sem aprovação extra (só quem tem acesso ao repositório dispara). Ao final o resumo mostra `public_ip`,
    `instance_id`, `media_bucket` e `backup_bucket`.
 
 Se usar domínio, crie um registro **A** (Route 53 ou onde estiver o DNS) apontando para o
@@ -176,8 +173,8 @@ sudo docker start app
 
 ## Destruir
 
-**Actions → Terraform → Run workflow** com `action: destroy`, `confirm: destroy` e aprovação do
-environment `production`.
+**Actions → Terraform → Run workflow** com `action: destroy` e `confirm: destroy` (o workflow
+recusa se o campo não for exatamente esse texto).
 
 - Destruir **apaga o disco da instância e, com ele, o SQLite**. Os backups continuam no S3.
 - Os buckets de mídia e de backups só são removidos se estiverem vazios. Marque `delete_buckets`

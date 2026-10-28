@@ -1,8 +1,8 @@
 name: Terraform
 
 # plan:    automático em PRs que mexem em infra/ e sob demanda (Actions → Run workflow)
-# apply:   sob demanda, depois do plan, com aprovação do environment "production"
-# destroy: sob demanda, com confirmação digitada e aprovação do environment "production"
+# apply:   sob demanda, depois do plan
+# destroy: sob demanda, com confirmação digitada ("destroy")
 on:
   pull_request:
     paths:
@@ -82,7 +82,6 @@ jobs:
     needs: plan
     if: github.event_name == 'workflow_dispatch' && inputs.action == 'apply'
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -111,7 +110,6 @@ jobs:
   destroy:
     if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
     runs-on: ubuntu-latest
-    environment: production
     env:
       TF_VAR_force_destroy_buckets: ${{ inputs.delete_buckets }}
       CONFIRM: ${{ inputs.confirm }}
