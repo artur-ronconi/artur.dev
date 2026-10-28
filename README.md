@@ -266,7 +266,7 @@ Produção roda em **uma instância EC2 t4g.nano** (us-east-1) com a imagem Dock
 | Workflow | Quando | O que faz |
 | --- | --- | --- |
 | `.github/workflows/terraform.yml` | PRs em `infra/` (plan) e manualmente (plan / apply / destroy) | Cria ou destrói a infraestrutura |
-| `.github/workflows/deploy.yml` | push na `main` | typecheck, lint e testes; build ARM64; push no ECR; atualiza a instância via SSM |
+| `.github/workflows/deploy.yml` | manualmente (Run workflow, na `main`) | typecheck, lint e testes; build ARM64; push no ECR; atualiza a instância via SSM |
 
 As variáveis de ambiente vêm do **Secrets Manager** (segredo `artur-dev/prod`, lido pela role da
 instância). O passo a passo (bootstrap, variáveis do repositório, primeiro deploy, backup/restore)

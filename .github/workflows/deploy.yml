@@ -1,16 +1,9 @@
 name: Deploy
 
-# Push na main: valida, constrói a imagem ARM64, publica no ECR e manda a instância
-# (t4g.nano) puxá-la via SSM. Sem SSH e sem portas extras.
+# Manual (Actions → Deploy → Run workflow), sempre a partir da main: valida, constrói a
+# imagem ARM64, publica no ECR e manda a instância (t4g.nano) puxá-la via SSM.
+# Sem SSH e sem portas extras.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "infra/**"
-      - "docs/**"
-      - "**/*.md"
-      - ".github/workflows/terraform.yml"
-      - ".github/actions/terraform-init/**"
   workflow_dispatch:
 
 permissions:

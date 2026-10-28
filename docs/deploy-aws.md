@@ -77,7 +77,7 @@ Sem domínio, o site responde em `http://<public_ip>` (sem HTTPS).
 
 ## 4. Primeiro deploy
 
-Faça um push na `main` (ou **Actions → Deploy → Run workflow**). O workflow:
+O deploy é **sempre manual**: **Actions → Deploy → Run workflow** (branch `main`). Fazer push não publica nada. O workflow:
 
 1. roda typecheck, lint e testes;
 2. constrói a imagem `linux/arm64` num runner ARM nativo e publica no ECR (`<sha>` e `latest`);
