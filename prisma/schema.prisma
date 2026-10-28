@@ -1,0 +1,516 @@
+// Portfolio data model.
+// Public pages read from here; the /admin panel is the only writer.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------- auth
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions Session[]
+
+  @@map("admin_users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Throttles credential stuffing: counted per e-mail and per IP.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String
+  success   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
+  @@map("login_attempts")
+}
+
+// ---------------------------------------------------------- taxonomies
+
+model TechnologyCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  /// lucide-react icon name rendered next to the category title.
+  icon        String?
+  accent      String?
+  order       Int      @default(0)
+  visible     Boolean  @default(true)
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  technologies Technology[]
+
+  @@index([order])
+  @@map("technology_categories")
+}
+
+model Technology {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  /// simple-icons slug (e.g. "nodedotjs") used to render the official logo.
+  iconSlug    String?
+  color       String?
+  description String?
+  url         String?
+  featured    Boolean  @default(false)
+  order       Int      @default(0)
+  categoryId  String?
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category    TechnologyCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  projects    ProjectTechnology[]
+  experiences ExperienceTechnology[]
+
+  @@index([categoryId, order])
+  @@map("technologies")
+}
+
+model ProjectCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  accent    String?
+  order     Int      @default(0)
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+
+  @@map("project_categories")
+}
+
+// ------------------------------------------------------------- projects
+
+enum ProjectStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  subtitle    String?
+  summary     String
+  description String?
+  status      ProjectStatus @default(DRAFT)
+  featured    Boolean       @default(false)
+  order       Int           @default(0)
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  period      String?
+  role        String?
+  client      String?
+  categoryId  String?
+
+  coverImageUrl String?
+  coverImageAlt String?
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  ogImageUrl      String?
+  indexable       Boolean @default(true)
+
+  isDemo      Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category     ProjectCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  technologies ProjectTechnology[]
+  sections     ProjectSection[]
+  images       ProjectImage[]
+  diagrams     ProjectDiagram[]
+  metrics      ProjectMetric[]
+  links        ProjectLink[]
+  codeBlocks   ProjectCodeBlock[]
+  endpoints    ProjectEndpoint[]
+  features     ProjectFeature[]
+
+  @@index([status, featured, order])
+  @@index([categoryId])
+  @@map("projects")
+}
+
+model ProjectTechnology {
+  projectId    String
+  technologyId String
+  /// What this technology does in this specific project.
+  role         String?
+  order        Int     @default(0)
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, technologyId])
+  @@index([technologyId])
+  @@map("project_technologies")
+}
+
+enum ProjectSectionType {
+  CONTEXT
+  OBJECTIVES
+  CONTRIBUTION
+  SOLUTION
+  ARCHITECTURE
+  CHALLENGES
+  DECISIONS
+  RESULTS
+  LEARNINGS
+  CUSTOM
+}
+
+/// Free-form case-study blocks. Markdown-ish body rendered by the public page.
+model ProjectSection {
+  id        String             @id @default(cuid())
+  projectId String
+  type      ProjectSectionType @default(CUSTOM)
+  title     String
+  body      String
+  order     Int                @default(0)
+  visible   Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, order])
+  @@map("project_sections")
+}
+
+enum ProjectImageKind {
+  SCREENSHOT
+  GALLERY
+  DIAGRAM
+}
+
+model ProjectImage {
+  id        String           @id @default(cuid())
+  projectId String
+  url       String
+  alt       String
+  caption   String?
+  kind      ProjectImageKind @default(SCREENSHOT)
+  width     Int?
+  height    Int?
+  order     Int              @default(0)
+  createdAt DateTime         @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, order])
+  @@map("project_images")
+}
+
+/// Architecture diagrams stored as Mermaid source and rendered client-side.
+model ProjectDiagram {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  source      String
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, order])
+  @@map("project_diagrams")
+}
+
+model ProjectMetric {
+  id          String  @id @default(cuid())
+  projectId   String
+  label       String
+  value       String
+  description String?
+  icon        String?
+  order       Int     @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, order])
+  @@map("project_metrics")
+}
+
+model ProjectFeature {
+  id          String  @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  icon        String?
+  order       Int     @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, order])
+  @@map("project_features")
+}
+
+enum ProjectLinkType {
+  REPOSITORY
+  DEMO
+  DOCS
+  VIDEO
+  ARTICLE
+  OTHER
+}
+
+model ProjectLink {
+  id        String          @id @default(cuid())
+  projectId String
+  type      ProjectLinkType @default(OTHER)
+  label     String
+  url       String
+  order     Int             @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, order])
+  @@map("project_links")
+}
+
+model ProjectCodeBlock {
+  id          String  @id @default(cuid())
+  projectId   String
+  title       String?
+  description String?
+  language    String  @default("typescript")
+  code        String
+  order       Int     @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, order])
+  @@map("project_code_blocks")
+}
+
+model ProjectEndpoint {
+  id          String  @id @default(cuid())
+  projectId   String
+  method      String  @default("GET")
+  path        String
+  description String?
+  auth        String?
+  order       Int     @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, order])
+  @@map("project_endpoints")
+}
+
+// ------------------------------------------------------------- profile
+
+model ProfessionalExperience {
+  id          String   @id @default(cuid())
+  company     String
+  role        String
+  startDate   String
+  endDate     String?
+  current     Boolean  @default(false)
+  location    String?
+  description String?
+  /// Ícone quadrado da empresa ou do projeto.
+  logoUrl     String?
+  /// Principais entregas, uma por item (exibidas como lista).
+  highlights  Json     @default("[]")
+  companyUrl  String?
+  order       Int      @default(0)
+  visible     Boolean  @default(true)
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  technologies ExperienceTechnology[]
+  media        ExperienceMedia[]
+
+  @@index([order])
+  @@map("professional_experiences")
+}
+
+/// Tecnologias usadas em uma experiência, escolhidas entre as cadastradas.
+model ExperienceTechnology {
+  experienceId String
+  technologyId String
+  order        Int    @default(0)
+
+  experience ProfessionalExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  technology Technology             @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([experienceId, technologyId])
+  @@index([technologyId])
+  @@map("experience_technologies")
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+/// Fotos e vídeos de uma experiência.
+model ExperienceMedia {
+  id           String    @id @default(cuid())
+  experienceId String
+  kind         MediaKind @default(IMAGE)
+  url          String
+  caption      String?
+  order        Int       @default(0)
+
+  experience ProfessionalExperience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@index([experienceId, order])
+  @@map("experience_media")
+}
+
+model Certification {
+  id            String   @id @default(cuid())
+  name          String
+  issuer        String
+  issuedAt      String?
+  expiresAt     String?
+  credentialId  String?
+  credentialUrl String?
+  iconSlug      String?
+  order         Int      @default(0)
+  visible       Boolean  @default(true)
+  isDemo        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([order])
+  @@map("certifications")
+}
+
+model SocialLink {
+  id       String  @id @default(cuid())
+  label    String
+  url      String
+  iconSlug String?
+  order    Int     @default(0)
+  visible  Boolean @default(true)
+
+  @@map("social_links")
+}
+
+/// Toggles and ordering for the home page sections.
+model HomeSection {
+  id      String  @id @default(cuid())
+  key     String  @unique
+  label   String
+  visible Boolean @default(true)
+  order   Int     @default(0)
+
+  @@map("home_sections")
+}
+
+/// Single-row table (id = "singleton") holding the portfolio owner's content.
+model PortfolioSettings {
+  id String @id @default("singleton")
+
+  fullName        String
+  headline        String
+  heroBadge       String?
+  heroTitle       String?
+  heroHighlight   String?
+  heroSubtitle    String?
+  heroDescription String?
+  shortBio        String?
+  about           String?
+  summaryItems    Json     @default("[]")
+  avatarUrl       String?
+  resumeUrl       String?
+
+  email            String?
+  phone            String?
+  location         String?
+  available        Boolean @default(true)
+  availabilityNote String?
+
+  githubUrl   String?
+  linkedinUrl String?
+  siteUrl     String?
+
+  metaTitle       String?
+  metaDescription String?
+  ogImageUrl      String?
+
+  contactHeading String?
+  contactText    String?
+  footerNote     String?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("portfolio_settings")
+}
+
+/// Messages submitted through the public contact form.
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  read      Boolean  @default(false)
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
+/// Uploaded media, reusable across projects.
+model MediaAsset {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  url       String
+  mimeType  String
+  size      Int
+  width     Int?
+  height    Int?
+  alt       String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("media_assets")
+}

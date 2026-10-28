@@ -1,0 +1,19 @@
+node_modules
+.next
+.git
+.env
+.env*.local
+coverage
+public/uploads
+*.md
+!README.md
+.run
+infra
+.github
+*.db
+*.db-*
+tests
+docs
+/*.pdf
+/*.png
+novas imagens

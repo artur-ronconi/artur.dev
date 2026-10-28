@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" role="img" aria-label="Ilustração abstrata de pipeline e governança multi-conta">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a100c"/>
+      <stop offset="100%" stop-color="#0d1510"/>
+    </linearGradient>
+    <pattern id="grid2" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#16241b" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="750" fill="url(#bg2)"/>
+  <rect width="1200" height="750" fill="url(#grid2)" opacity="0.5"/>
+  <g stroke="#a78bfa" stroke-opacity="0.55" stroke-width="2" fill="none">
+    <path d="M150 180 H1050"/>
+  </g>
+  <g>
+    <g fill="#0d1510" stroke="#a78bfa" stroke-opacity="0.5">
+      <rect x="110" y="140" width="150" height="80" rx="12"/>
+      <rect x="340" y="140" width="150" height="80" rx="12"/>
+      <rect x="570" y="140" width="150" height="80" rx="12"/>
+      <rect x="800" y="140" width="150" height="80" rx="12"/>
+    </g>
+    <g font-family="monospace" font-size="17" fill="#a3b8a7" text-anchor="middle">
+      <text x="185" y="187">plan</text>
+      <text x="415" y="187">apply</text>
+      <text x="645" y="187">verify</text>
+      <text x="875" y="187">report</text>
+    </g>
+  </g>
+  <g fill="#0d1510" stroke="#2a4333">
+    <rect x="110" y="340" width="260" height="150" rx="14"/>
+    <rect x="470" y="340" width="260" height="150" rx="14"/>
+    <rect x="830" y="340" width="260" height="150" rx="14"/>
+    <rect x="290" y="560" width="620" height="110" rx="14" stroke="#8cc84b" stroke-opacity="0.45"/>
+  </g>
+  <g font-family="monospace" font-size="17" fill="#a3b8a7" text-anchor="middle">
+    <text x="240" y="405">conta aws #1</text>
+    <text x="600" y="405">conta aws #2</text>
+    <text x="960" y="405">conta aws #n</text>
+    <text x="240" y="440" fill="#6f8675" font-size="14">backup · compliance</text>
+    <text x="600" y="440" fill="#6f8675" font-size="14">inventário</text>
+    <text x="960" y="440" fill="#6f8675" font-size="14">custos</text>
+    <text x="600" y="620" fill="#8cc84b" font-size="19">plataforma interna</text>
+  </g>
+  <g stroke="#2a4333" stroke-width="2" fill="none">
+    <path d="M240 490 V560"/><path d="M600 490 V560"/><path d="M960 490 V560"/>
+  </g>
+</svg>

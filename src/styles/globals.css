@@ -1,0 +1,390 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Identidade visual — "runtime" verde, inspirado no Node.js: superfícies
+   quase pretas com subtom verde no tema escuro e papel esverdeado no claro.
+
+   Os tokens abaixo são os valores do tema ESCURO (padrão). O tema claro
+   redefine as mesmas variáveis em `:root[data-theme="light"]`, então todo
+   utilitário (`bg-base-900`, `text-ink`, `border-line`…) troca de tema sem
+   precisar de variantes `dark:`.
+   ------------------------------------------------------------------ */
+
+@theme {
+  --color-base-950: #060a07;
+  --color-base-900: #0a100c;
+  --color-base-850: #0d1510;
+  --color-base-800: #111b15;
+  --color-base-700: #17251c;
+  --color-base-600: #1f3226;
+  --color-base-500: #2a4333;
+
+  --color-line: #16241b;
+  --color-line-strong: #253d2d;
+
+  --color-ink: #ecf5ec;
+  --color-ink-muted: #a3b8a7;
+  --color-ink-faint: #6f8675;
+
+  /* Verde do Node.js: #8cc84b (logo) e #5fa04e (marca atual). */
+  --color-accent: #8cc84b;
+  --color-accent-strong: #5fa04e;
+  --color-accent-soft: #14271a;
+  --color-violet: #a78bfa;
+  --color-emerald: #2dd4bf;
+  --color-amber: #fbbf24;
+  --color-rose: #fb7185;
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --radius-panel: 14px;
+
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-pulse-line: pulse-line 3.2s ease-in-out infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-caret: caret 1.1s steps(1) infinite;
+  --animate-dash: dash-flow 0.9s linear infinite;
+  --animate-ring: ring 1.6s ease-out infinite;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes pulse-line {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes caret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -18; }
+}
+
+@keyframes ring {
+  from { opacity: 0.7; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.35); }
+}
+
+@keyframes line-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes boot {
+  0% { opacity: 0.35; }
+  50% { opacity: 1; }
+  100% { opacity: 0.35; }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --shadow-panel: 0 18px 40px -24px rgb(0 0 0 / 0.9);
+    --shadow-float: 0 30px 80px -40px rgb(0 0 0 / 0.9);
+    --grid-line: color-mix(in oklab, var(--color-line) 70%, transparent);
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+
+    --color-base-950: #f3f7ef;
+    --color-base-900: #f9fbf6;
+    --color-base-850: #ffffff;
+    --color-base-800: #edf3e8;
+    --color-base-700: #e2ebdc;
+    --color-base-600: #d2dfcb;
+    --color-base-500: #b8c9b0;
+
+    --color-line: #dae5d3;
+    --color-line-strong: #bfd0b7;
+
+    --color-ink: #0f1b12;
+    --color-ink-muted: #43564a;
+    --color-ink-faint: #6a7d70;
+
+    --color-accent: #256f2a;
+    --color-accent-strong: #2e7d32;
+    --color-accent-soft: #dff0d6;
+    --color-violet: #6d4fd8;
+    --color-emerald: #0f8f7e;
+    --color-amber: #b25e09;
+    --color-rose: #d6335a;
+
+    --shadow-panel: 0 18px 36px -26px rgb(22 48 26 / 0.45);
+    --shadow-float: 0 30px 70px -42px rgb(22 48 26 / 0.5);
+    --grid-line: color-mix(in oklab, var(--color-line-strong) 55%, transparent);
+  }
+
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-base-950);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-accent) 35%, transparent);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: var(--color-base-900); }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-base-600);
+    border: 3px solid var(--color-base-900);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-base-500); }
+
+  /* A troca de tema usa a View Transitions API: o tema novo "abre" em círculo
+     a partir do botão. A animação em si é disparada em theme.tsx. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+}
+
+@layer components {
+  /* Malha técnica usada como fundo de seções e do hero. */
+  .grid-backdrop {
+    background-image:
+      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .dot-backdrop {
+    background-image: radial-gradient(var(--grid-line) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  .panel {
+    background: linear-gradient(180deg, var(--color-base-850) 0%, var(--color-base-900) 100%);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-panel);
+  }
+
+  .panel-hover {
+    transition: border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+  }
+
+  /* O "holofote" segue o cursor: --mx/--my são atualizados em pointer-glow.tsx. */
+  .panel-hover:hover {
+    border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-line-strong));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-panel);
+    background-image:
+      radial-gradient(
+        360px circle at var(--mx, 50%) var(--my, 0%),
+        color-mix(in oklab, var(--color-accent) 13%, transparent),
+        transparent 65%
+      ),
+      linear-gradient(180deg, var(--color-base-850) 0%, var(--color-base-900) 100%);
+  }
+
+  .rule-label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  /* Tecla de atalho (⌘K, setas…). */
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    line-height: 1;
+    color: var(--color-ink-muted);
+    background: var(--color-base-800);
+    border: 1px solid var(--color-line-strong);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+  }
+
+  .line-in {
+    animation: line-in 220ms ease-out both;
+  }
+
+  /* Controle deslizante usado no laboratório de servidores. */
+  .range {
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    cursor: pointer;
+    background: linear-gradient(
+      to right,
+      var(--color-accent-strong) var(--fill, 50%),
+      var(--color-base-600) var(--fill, 50%)
+    );
+  }
+
+  .range::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--color-accent);
+    border: 3px solid var(--color-base-900);
+    box-shadow: 0 0 0 1px var(--color-accent-strong);
+  }
+
+  .range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: var(--color-accent);
+    border: 3px solid var(--color-base-900);
+    box-shadow: 0 0 0 1px var(--color-accent-strong);
+  }
+
+  /* Shiki renderiza os dois temas como variáveis CSS; aqui escolhemos qual usar. */
+  .shiki,
+  .shiki span {
+    color: var(--shiki-dark);
+  }
+
+  :root[data-theme="light"] .shiki,
+  :root[data-theme="light"] .shiki span {
+    color: var(--shiki-light);
+  }
+
+  .prose-portfolio {
+    color: var(--color-ink-muted);
+    line-height: 1.75;
+  }
+
+  .prose-portfolio > * + * { margin-top: 1rem; }
+
+  .prose-portfolio strong { color: var(--color-ink); font-weight: 600; }
+
+  .prose-portfolio h3 {
+    color: var(--color-ink);
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-top: 1.75rem;
+  }
+
+  .prose-portfolio ul { list-style: none; padding-left: 0; }
+
+  .prose-portfolio li {
+    position: relative;
+    padding-left: 1.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .prose-portfolio li::before {
+    content: "";
+    position: absolute;
+    left: 0.25rem;
+    top: 0.7rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+    background: var(--color-accent);
+    opacity: 0.8;
+  }
+
+  .prose-portfolio code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--color-base-800);
+    border: 1px solid var(--color-line);
+    padding: 0.1rem 0.35rem;
+    border-radius: 5px;
+    color: var(--color-accent);
+  }
+
+  .prose-portfolio a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+@layer utilities {
+  /* Conteúdo sempre visível por padrão: a animação de entrada só é aplicada
+     quando o JavaScript está disponível (classe `js` no <html>). */
+  .js .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 620ms cubic-bezier(0.22, 1, 0.36, 1), transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+  }
+
+  .js .reveal[data-visible="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .text-gradient {
+    background: linear-gradient(100deg, var(--color-accent-strong) 0%, var(--color-accent) 50%, var(--color-emerald) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .mask-fade-x {
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-base-600) transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .js .reveal { opacity: 1; transform: none; }
+}

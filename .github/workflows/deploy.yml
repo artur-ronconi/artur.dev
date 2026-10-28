@@ -1,0 +1,144 @@
+name: Deploy
+
+# Push na main: valida, constrói a imagem ARM64, publica no ECR e manda a instância
+# (t4g.nano) puxá-la via SSM. Sem SSH e sem portas extras.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "infra/**"
+      - "docs/**"
+      - "**/*.md"
+      - ".github/workflows/terraform.yml"
+      - ".github/actions/terraform-init/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+defaults:
+  run:
+    shell: bash
+
+# Nunca dois deploys ao mesmo tempo, e um deploy em andamento não é cancelado.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  PROJECT: artur-dev
+  SECRET_ID: artur-dev/prod
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: file:./ci.db
+      DATABASE_URL_TEST: file:./ci-test.db
+      AUTH_SECRET: ci-secret-value-with-at-least-32-characters
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Migrations (bancos SQLite de teste)
+        run: |
+          npx prisma migrate deploy
+          DATABASE_URL="$DATABASE_URL_TEST" npx prisma migrate deploy
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes
+        run: npm test
+
+  deploy:
+    needs: quality
+    # Runner ARM nativo: evita emular arm64 com QEMU (o build do Next ficaria muito lento).
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # O next.config.ts embute a origem pública do bucket no build.
+      - name: Ler configuração de build do Secrets Manager
+        id: config
+        run: |
+          secret="$(aws secretsmanager get-secret-value --secret-id "$SECRET_ID" --query SecretString --output text)"
+          echo "s3_public_url=$(jq -r '.S3_PUBLIC_URL // empty' <<<"$secret")" >>"$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build e push da imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          build-args: |
+            S3_PUBLIC_URL=${{ steps.config.outputs.s3_public_url }}
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ env.PROJECT }}:${{ github.sha }}
+            ${{ steps.ecr.outputs.registry }}/${{ env.PROJECT }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Atualizar a instância (SSM)
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          instance_id="$(aws ec2 describe-instances \
+            --filters "Name=tag:Project,Values=$PROJECT" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[].Instances[].InstanceId' --output text)"
+
+          if [ -z "$instance_id" ] || [ "$(wc -w <<<"$instance_id")" -ne 1 ]; then
+            echo "::error::Esperava exatamente 1 instância em execução com a tag Project=$PROJECT (encontradas: '${instance_id}'). A infraestrutura foi criada (workflow Terraform → apply)?"
+            exit 1
+          fi
+
+          command_id="$(aws ssm send-command \
+            --instance-ids "$instance_id" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy $IMAGE_TAG" \
+            --timeout-seconds 900 \
+            --parameters "commands=[\"/usr/local/bin/artur-deploy $IMAGE_TAG\"]" \
+            --query Command.CommandId --output text)"
+          echo "Comando SSM $command_id na instância $instance_id"
+
+          status=Pending
+          for _ in $(seq 1 180); do
+            sleep 5
+            status="$(aws ssm get-command-invocation --command-id "$command_id" --instance-id "$instance_id" \
+              --query Status --output text 2>/dev/null || echo Pending)"
+            case "$status" in Pending | InProgress | Delayed) ;; *) break ;; esac
+          done
+
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$instance_id" \
+            --query '[StandardOutputContent, StandardErrorContent]' --output text || true
+
+          if [ "$status" != "Success" ]; then
+            echo "::error::Deploy terminou com status $status"
+            exit 1
+          fi

@@ -1,0 +1,42 @@
+# dependências e build
+node_modules
+.next
+out
+build
+coverage
+dist-scripts
+*.tsbuildinfo
+next-env.d.ts
+
+# ambiente e segredos (use .env.example como modelo)
+.env
+.env*.local
+
+# bancos SQLite locais e uploads
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+public/uploads
+
+# execução local
+.run
+.vercel
+
+# Terraform (o .terraform.lock.hcl é versionado)
+infra/**/.terraform/
+infra/**/*.tfstate*
+infra/**/*.tfvars
+!infra/**/*.tfvars.example
+
+# materiais de referência na raiz (currículo e mockups), fora do app
+/*.pdf
+/*.png
+/novas imagens/
+
+# editor / sistema / ferramentas
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+.claude/settings.local.json

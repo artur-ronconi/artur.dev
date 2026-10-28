@@ -1,0 +1,6 @@
+# cp terraform.tfvars.example terraform.tfvars  (o arquivo real é ignorado pelo git)
+admin_email = "voce@exemplo.com"
+
+# Opcional — sem domínio o site sobe em HTTP pelo IP elástico.
+# domain_name = "artur.dev"
+# acme_email  = "voce@exemplo.com"

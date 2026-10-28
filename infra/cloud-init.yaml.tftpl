@@ -1,0 +1,82 @@
+#cloud-config
+# Primeiro boot da instância (Amazon Linux 2023, ARM64). Gerado pelo Terraform.
+
+package_update: true
+packages:
+  - docker
+  - sqlite
+  - jq
+
+write_files:
+  - path: /etc/artur-dev/config.env
+    permissions: "0644"
+    content: |
+      AWS_REGION="${region}"
+      SECRET_ID="${secret_id}"
+      ECR_REGISTRY="${ecr_registry}"
+      ECR_REPOSITORY="${ecr_repository}"
+      SITE_ADDRESS="${site_address}"
+      ACME_EMAIL="${acme_email}"
+      BACKUP_BUCKET="${backup_bucket}"
+
+  - path: /usr/local/bin/artur-deploy
+    permissions: "0755"
+    encoding: b64
+    content: ${deploy_script_b64}
+
+  - path: /usr/local/bin/artur-backup
+    permissions: "0755"
+    encoding: b64
+    content: ${backup_script_b64}
+
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": { "max-size": "10m", "max-file": "3" }
+      }
+
+  - path: /etc/systemd/system/artur-backup.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Backup diario do SQLite para o S3
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/artur-backup
+
+  - path: /etc/systemd/system/artur-backup.timer
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Agenda o backup diario do SQLite
+
+      [Timer]
+      OnCalendar=*-*-* 05:00:00 UTC
+      Persistent=true
+      RandomizedDelaySec=15min
+
+      [Install]
+      WantedBy=timers.target
+
+runcmd:
+  # Swap: com 512 MB de RAM ele absorve os picos (migrations, otimização de imagens).
+  - |
+    if ! swapon --show | grep -q /swapfile; then
+      dd if=/dev/zero of=/swapfile bs=1M count=${swap_size_mb}
+      chmod 600 /swapfile
+      mkswap /swapfile
+      swapon /swapfile
+      echo '/swapfile none swap sw 0 0' >> /etc/fstab
+      echo 'vm.swappiness=10' > /etc/sysctl.d/99-swap.conf
+      sysctl -p /etc/sysctl.d/99-swap.conf
+    fi
+  - mkdir -p /data /opt/artur-dev
+  - chown 1001:1001 /data
+  - systemctl enable --now docker
+  - systemctl daemon-reload
+  - systemctl enable --now artur-backup.timer
+  # Na primeira vez a imagem ainda pode não existir no ECR; o workflow de deploy cuida disso.
+  - /usr/local/bin/artur-deploy latest >> /var/log/artur-deploy.log 2>&1 || true
