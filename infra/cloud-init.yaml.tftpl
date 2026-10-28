@@ -12,9 +12,8 @@ write_files:
     permissions: "0644"
     content: |
       AWS_REGION="${region}"
+      PROJECT="${project}"
       SECRET_ID="${secret_id}"
-      ECR_REGISTRY="${ecr_registry}"
-      ECR_REPOSITORY="${ecr_repository}"
       SITE_ADDRESS="${site_address}"
       ACME_EMAIL="${acme_email}"
       BACKUP_BUCKET="${backup_bucket}"
@@ -78,5 +77,4 @@ runcmd:
   - systemctl enable --now docker
   - systemctl daemon-reload
   - systemctl enable --now artur-backup.timer
-  # Na primeira vez a imagem ainda pode não existir no ECR; o workflow de deploy cuida disso.
-  - /usr/local/bin/artur-deploy latest >> /var/log/artur-deploy.log 2>&1 || true
+  # A aplicação sobe no primeiro deploy (workflow Deploy), quando a imagem chega pelo S3.

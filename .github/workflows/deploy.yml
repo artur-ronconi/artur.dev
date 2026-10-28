@@ -1,7 +1,7 @@
 name: Deploy
 
 # Manual (Actions → Deploy → Run workflow), sempre a partir da main: valida, constrói a
-# imagem ARM64, publica no ECR e manda a instância (t4g.nano) puxá-la via SSM.
+# imagem ARM64, envia para o S3 e manda a instância (t4g.nano) carregá-la via SSM.
 # Sem SSH e sem portas extras.
 on:
   workflow_dispatch:
@@ -71,32 +71,37 @@ jobs:
           aws-secret-access-key: ${{ secrets.TERRAFORM_AWS_ACCESS_SECRET_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
       # O next.config.ts embute a origem pública do bucket no build.
       - name: Ler configuração de build do Secrets Manager
         id: config
         run: |
           secret="$(aws secretsmanager get-secret-value --secret-id "$SECRET_ID" --query SecretString --output text)"
           echo "s3_public_url=$(jq -r '.S3_PUBLIC_URL // empty' <<<"$secret")" >>"$GITHUB_OUTPUT"
+          echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >>"$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build e push da imagem
+      # Sem registry: a imagem vira um arquivo e a instância a carrega do S3.
+      - name: Build da imagem (ARM64)
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/arm64
-          push: true
+          push: false
           provenance: false
           build-args: |
             S3_PUBLIC_URL=${{ steps.config.outputs.s3_public_url }}
-          tags: |
-            ${{ steps.ecr.outputs.registry }}/${{ env.PROJECT }}:${{ github.sha }}
-            ${{ steps.ecr.outputs.registry }}/${{ env.PROJECT }}:latest
+          tags: ${{ env.PROJECT }}:${{ github.sha }}
+          outputs: type=docker,dest=${{ runner.temp }}/image.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Enviar a imagem para o S3
+        env:
+          BUCKET: ${{ env.PROJECT }}-backups-${{ steps.config.outputs.account_id }}
+        run: |
+          gzip -1 "$RUNNER_TEMP/image.tar"
+          aws s3 cp "$RUNNER_TEMP/image.tar.gz" "s3://$BUCKET/releases/$PROJECT-$GITHUB_SHA.tar.gz" --only-show-errors
 
       - name: Atualizar a instância (SSM)
         env:

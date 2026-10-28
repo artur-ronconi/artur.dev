@@ -1,4 +1,4 @@
-# Role da instância: lê o segredo, puxa a imagem do ECR, grava mídia/backups no S3
+# Role da instância: lê o segredo, baixa a imagem (S3), grava mídia/backups no S3
 # e aceita comandos do SSM (é assim que o deploy chega nela, sem SSH).
 
 data "aws_iam_policy_document" "ec2_assume" {
@@ -24,25 +24,10 @@ resource "aws_iam_role_policy_attachment" "ssm_core" {
 
 data "aws_iam_policy_document" "instance" {
   statement {
-    sid       = "ReadAppSecret"
-    actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
-    resources = [aws_secretsmanager_secret.app.arn]
-  }
-
-  statement {
-    sid       = "EcrLogin"
-    actions   = ["ecr:GetAuthorizationToken"]
-    resources = ["*"]
-  }
-
-  statement {
-    sid = "EcrPull"
-    actions = [
-      "ecr:BatchCheckLayerAvailability",
-      "ecr:BatchGetImage",
-      "ecr:GetDownloadUrlForLayer",
-    ]
-    resources = [aws_ecr_repository.app.arn]
+    sid     = "ReadAppSecret"
+    actions = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+    # Sufixo aleatório que o Secrets Manager acrescenta ao ARN.
+    resources = ["arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${local.secret_name}-*"]
   }
 
   statement {
@@ -52,13 +37,13 @@ data "aws_iam_policy_document" "instance" {
   }
 
   statement {
-    sid       = "BackupWrite"
+    sid       = "BackupsAndReleases"
     actions   = ["s3:PutObject", "s3:GetObject"]
     resources = ["${aws_s3_bucket.backups.arn}/*"]
   }
 
   statement {
-    sid       = "BackupList"
+    sid       = "BucketList"
     actions   = ["s3:ListBucket"]
     resources = [aws_s3_bucket.backups.arn]
   }

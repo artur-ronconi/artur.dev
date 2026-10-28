@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Sobe (ou atualiza) a aplicação nesta instância.
 #
-#   artur-deploy [tag]     tag da imagem no ECR (padrão: latest)
+#   artur-deploy <tag>     tag da imagem enviada pela pipeline (normalmente o SHA do commit)
 #
-# Chamado pelo workflow de deploy via SSM e uma vez no primeiro boot. As variáveis de
+# Chamado pelo workflow de deploy via SSM. A imagem chega como arquivo no S3
+# (releases/<projeto>-<tag>.tar.gz); não há registry. As variáveis de
 # ambiente vêm do Secrets Manager, lidas com a role da instância; o arquivo temporário
 # com elas fica em /run (tmpfs, modo 600) e é apagado ao final.
 set -euo pipefail
@@ -13,8 +14,8 @@ export HOME="${HOME:-/root}"
 source /etc/artur-dev/config.env
 export AWS_DEFAULT_REGION="$AWS_REGION"
 
-TAG="${1:-latest}"
-IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:$TAG"
+TAG="${1:?uso: artur-deploy <tag>}"
+IMAGE="$PROJECT:$TAG"
 CONFIG_DIR=/opt/artur-dev
 
 log() { printf '[artur-deploy] %s\n' "$*"; }
@@ -26,9 +27,8 @@ log "lendo o segredo $SECRET_ID"
 aws secretsmanager get-secret-value --secret-id "$SECRET_ID" --query SecretString --output text |
   jq -r 'to_entries[] | "\(.key)=\(.value)"' >"$ENV_FILE"
 
-log "baixando $IMAGE"
-aws ecr get-login-password | docker login --username AWS --password-stdin "$ECR_REGISTRY" >/dev/null
-docker pull "$IMAGE"
+log "carregando $IMAGE de s3://$BACKUP_BUCKET/releases/$PROJECT-$TAG.tar.gz"
+aws s3 cp "s3://$BACKUP_BUCKET/releases/$PROJECT-$TAG.tar.gz" - | gunzip | docker load
 
 docker network inspect web >/dev/null 2>&1 || docker network create web >/dev/null
 mkdir -p /data "$CONFIG_DIR"
@@ -63,7 +63,7 @@ for _ in $(seq 1 60); do
   if docker exec app wget -q -O /dev/null http://127.0.0.1:3000/ 2>/dev/null; then
     log "no ar: $IMAGE"
     # Mantém só as 3 imagens mais recentes da aplicação (o disco da nano é pequeno).
-    docker images "$ECR_REGISTRY/$ECR_REPOSITORY" --format '{{.ID}}' | awk '!seen[$0]++' | tail -n +4 |
+    docker images "$PROJECT" --format '{{.ID}}' | awk '!seen[$0]++' | tail -n +4 |
       xargs -r docker rmi >/dev/null 2>&1 || true
     docker image prune -f >/dev/null
     exit 0

@@ -41,7 +41,7 @@ resource "aws_s3_bucket_policy" "media_public_read" {
   depends_on = [aws_s3_bucket_public_access_block.media]
 }
 
-# ------------------------------------------------------------------- backups do SQLite
+# --------------------------------------- backups do SQLite (db/) e imagens de deploy (releases/)
 
 resource "aws_s3_bucket" "backups" {
   bucket        = local.backup_bucket
@@ -74,10 +74,26 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
     id     = "expire-old-backups"
     status = "Enabled"
 
-    filter {}
+    filter {
+      prefix = "db/"
+    }
 
     expiration {
       days = var.backup_retention_days
+    }
+  }
+
+  # Imagens de deploy (tar.gz) só precisam existir até a instância carregá-las.
+  rule {
+    id     = "expire-releases"
+    status = "Enabled"
+
+    filter {
+      prefix = "releases/"
+    }
+
+    expiration {
+      days = 7
     }
   }
 }

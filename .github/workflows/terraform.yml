@@ -39,7 +39,6 @@ concurrency:
 
 env:
   TF_IN_AUTOMATION: "true"
-  TF_VAR_admin_email: ${{ vars.ADMIN_EMAIL }}
   TF_VAR_domain_name: ${{ vars.DOMAIN_NAME }}
   TF_VAR_acme_email: ${{ vars.ACME_EMAIL }}
 

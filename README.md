@@ -83,8 +83,8 @@ openssl rand -base64 48
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | só no seed | Criam o primeiro administrador |
 | `DATABASE_URL_TEST` | não | Banco usado por `npm test` (ex.: `file:./test.db`; aplique `prisma migrate deploy` nele antes — recomendado para não tocar no banco de desenvolvimento) |
 
-Em produção as variáveis vêm do AWS Secrets Manager (o Terraform cria o segredo e a role da
-instância o lê no deploy) — nunca versionar o `.env`.
+Em produção as variáveis vêm do AWS Secrets Manager (segredo `artur-dev/prod`, criado por você no
+console; a role da instância o lê no deploy) — nunca versionar o `.env`.
 
 ### 4. Instalação, migrations e seed
 
@@ -266,7 +266,7 @@ Produção roda em **uma instância EC2 t4g.nano** (us-east-1) com a imagem Dock
 | Workflow | Quando | O que faz |
 | --- | --- | --- |
 | `.github/workflows/terraform.yml` | PRs em `infra/` (plan) e manualmente (plan / apply / destroy) | Cria ou destrói a infraestrutura |
-| `.github/workflows/deploy.yml` | manualmente (Run workflow, na `main`) | typecheck, lint e testes; build ARM64; push no ECR; atualiza a instância via SSM |
+| `.github/workflows/deploy.yml` | manualmente (Run workflow, na `main`) | typecheck, lint e testes; build ARM64; envia a imagem ao S3; atualiza a instância via SSM |
 
 As variáveis de ambiente vêm do **Secrets Manager** (segredo `artur-dev/prod`, lido pela role da
 instância). O passo a passo (pré-requisitos no console, secrets do repositório, primeiro deploy, backup/restore)

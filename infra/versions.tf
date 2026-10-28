@@ -6,10 +6,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.80"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
   }
 
   # Estado remoto no S3 (criado à mão no console: docs/deploy-aws.md). O bucket é informado na hora:

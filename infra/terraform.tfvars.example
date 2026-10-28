@@ -1,5 +1,5 @@
-# cp terraform.tfvars.example terraform.tfvars  (o arquivo real é ignorado pelo git)
-admin_email = "voce@exemplo.com"
+# Não é necessário para a pipeline (ela usa as variáveis do GitHub). Só se rodar localmente:
+#   cp terraform.tfvars.example terraform.tfvars  (o arquivo real é ignorado pelo git)
 
 # Opcional — sem domínio o site sobe em HTTP pelo IP elástico.
 # domain_name = "artur.dev"

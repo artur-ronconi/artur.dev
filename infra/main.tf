@@ -1,7 +1,6 @@
 resource "aws_security_group" "app" {
   name        = "${var.project_name}-web"
   description = "HTTP/HTTPS publico. Sem SSH: o acesso administrativo e via SSM."
-  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     description = "HTTP (Lets Encrypt e redirecionamento)"
@@ -36,20 +35,17 @@ resource "aws_eip" "app" {
 resource "aws_instance" "app" {
   ami                    = nonsensitive(data.aws_ssm_parameter.al2023_arm64.value)
   instance_type          = var.instance_type
-  subnet_id              = data.aws_subnets.default.ids[0]
   vpc_security_group_ids = [aws_security_group.app.id]
   iam_instance_profile   = aws_iam_instance_profile.instance.name
 
   user_data = templatefile("${path.module}/cloud-init.yaml.tftpl", {
-    region         = var.aws_region
-    project        = var.project_name
-    secret_id      = aws_secretsmanager_secret.app.name
-    ecr_registry   = local.ecr_registry
-    ecr_repository = aws_ecr_repository.app.name
-    site_address   = local.site_address
-    acme_email     = var.acme_email
-    backup_bucket  = aws_s3_bucket.backups.bucket
-    swap_size_mb   = var.swap_size_mb
+    region        = var.aws_region
+    project       = var.project_name
+    secret_id     = local.secret_name
+    site_address  = local.site_address
+    acme_email    = var.acme_email
+    backup_bucket = aws_s3_bucket.backups.bucket
+    swap_size_mb  = var.swap_size_mb
 
     deploy_script_b64 = filebase64("${path.module}/files/artur-deploy.sh")
     backup_script_b64 = filebase64("${path.module}/files/artur-backup.sh")

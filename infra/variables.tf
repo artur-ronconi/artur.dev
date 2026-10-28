@@ -34,17 +34,6 @@ variable "acme_email" {
   default     = ""
 }
 
-variable "admin_email" {
-  description = "E-mail do primeiro administrador (criado no primeiro start, se não existir)."
-  type        = string
-}
-
-variable "admin_name" {
-  description = "Nome exibido do administrador."
-  type        = string
-  default     = "Artur Hamann Ronconi"
-}
-
 variable "swap_size_mb" {
   description = "Swap em arquivo: a t4g.nano só tem 512 MB de RAM."
   type        = number
