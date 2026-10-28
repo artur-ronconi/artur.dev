@@ -269,7 +269,7 @@ Produção roda em **uma instância EC2 t4g.nano** (us-east-1) com a imagem Dock
 | `.github/workflows/deploy.yml` | manualmente (Run workflow, na `main`) | typecheck, lint e testes; build ARM64; push no ECR; atualiza a instância via SSM |
 
 As variáveis de ambiente vêm do **Secrets Manager** (segredo `artur-dev/prod`, lido pela role da
-instância). O passo a passo (pré-requisitos no console, variáveis do repositório, primeiro deploy, backup/restore)
+instância). O passo a passo (pré-requisitos no console, secrets do repositório, primeiro deploy, backup/restore)
 está em [`docs/deploy-aws.md`](docs/deploy-aws.md).
 
 ```bash

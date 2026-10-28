@@ -3,7 +3,7 @@
 A aplicação roda numa única instância **t4g.nano** (ARM64, 512 MB de RAM) em **us-east-1**:
 
 ```
-GitHub Actions ──(OIDC)──> ECR  ◄── docker pull ──┐
+GitHub Actions ──(chaves IAM)──> ECR  ◄── docker pull ──┐
       │                                           │
       └──(SSM Run Command)──> EC2 t4g.nano ───────┘
                                ├─ Caddy  :80/:443  (HTTPS automático com domínio)
@@ -25,85 +25,60 @@ GitHub Actions ──(OIDC)──> ECR  ◄── docker pull ──┐
 | --- | --- |
 | `main.tf` | Security group (80/443), IP elástico e a instância |
 | `iam.tf` | Role e instance profile da instância |
-| `github.tf` | Role de deploy do GitHub Actions (OIDC, privilégio mínimo) |
 | `secrets.tf` | Segredo com as variáveis de ambiente (já com `AUTH_SECRET` e senha do admin gerados) |
 | `s3.tf` | Bucket de mídia (leitura pública só em `uploads/*`) e bucket de backups |
 | `ecr.tf` | Repositório da imagem |
 | `cloud-init.yaml.tftpl`, `files/` | Primeiro boot: Docker, swap, scripts `artur-deploy` e `artur-backup` |
 
-Nada é executado na sua máquina: o Terraform roda só na pipeline. Antes, você cria **três coisas à
-mão no console da AWS** (passo 1), porque a pipeline precisa delas para existir.
+Nada é executado na sua máquina: o Terraform roda só na pipeline. Antes, você cria **duas coisas
+à mão no console da AWS** (passo 1) e cadastra duas chaves no GitHub (passo 2).
 
 ## 1. Pré-requisitos no console da AWS (região us-east-1)
-
-Anote o **ID da conta** (12 dígitos, canto superior direito do console). Os nomes abaixo são fixos:
-os workflows os montam a partir do ID da conta.
 
 ### 1.1 Bucket do estado do Terraform
 
 **S3 → Create bucket**
 
-- Nome: `artur-dev-tfstate-<ID_DA_CONTA>`, região **us-east-1**
+- Nome: `artur-dev-tfstate-<ID_DA_CONTA>`, região **us-east-1** (o ID da conta tem 12 dígitos e
+  aparece no canto superior direito do console; os workflows o descobrem sozinhos pelas chaves)
 - Block all public access: **ligado**
 - Bucket Versioning: **Enable**
 - Default encryption: SSE-S3 (padrão)
 
-### 1.2 Provedor OIDC do GitHub
+### 1.2 Usuário IAM da pipeline
 
-**IAM → Identity providers → Add provider**
+**IAM → Users → Create user**
 
-- Provider type: **OpenID Connect**
-- Provider URL: `https://token.actions.githubusercontent.com`
-- Audience: `sts.amazonaws.com`
+- Nome: `artur-dev-github` (sem acesso ao console)
+- Permissions: anexe **AdministratorAccess** (o stack cria IAM, EC2, S3, ECR e Secrets Manager)
+- Depois de criado: **Security credentials → Create access key → Application running outside AWS**
+  e copie o *Access key ID* e o *Secret access key* (o segredo só aparece agora)
 
-### 1.3 Role do Terraform
-
-**IAM → Roles → Create role → Custom trust policy**, cole (troque `<ID_DA_CONTA>`):
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::<ID_DA_CONTA>:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        "StringLike": {
-          "token.actions.githubusercontent.com:sub": [
-            "repo:artur-ronconi/artur.dev:pull_request",
-            "repo:artur-ronconi/artur.dev:ref:refs/heads/main",
-            "repo:artur-ronconi/artur.dev:environment:production"
-          ]
-        }
-      }
-    }
-  ]
-}
-```
-
-- Permissions: **AdministratorAccess** (o stack cria IAM, EC2, S3, ECR e Secrets Manager; dá para
-  trocar por uma política mais restrita depois)
-- Role name: **`artur-dev-github-terraform`** (exatamente esse nome)
-
-A role de **deploy** (`artur-dev-github-deploy`) você **não** cria: o próprio Terraform a cria no
-`apply`, com privilégio mínimo e válida só para a branch `main`.
+> Essas chaves valem para os dois workflows (Terraform e Deploy) e dão poder total sobre a conta.
+> Por isso: use uma conta AWS dedicada ao projeto, mantenha o repositório com as proteções de
+> branch ligadas, gire a chave de tempos em tempos e, se quiser, troque o AdministratorAccess por
+> uma política restrita aos serviços acima.
 
 ## 2. Configurar o repositório no GitHub
 
-**Settings → Secrets and variables → Actions → Variables** (não há secrets)
+**Settings → Secrets and variables → Actions**
+
+Aba **Secrets** (*New repository secret*):
+
+| Secret | Valor |
+| --- | --- |
+| `TERRAFORM_AWS_ACCESS_KEY_ID` | Access key ID do usuário `artur-dev-github` |
+| `TERRAFORM_AWS_ACCESS_SECRET_KEY` | Secret access key do mesmo usuário |
+
+Aba **Variables**:
 
 | Variável | Valor |
 | --- | --- |
-| `AWS_ACCOUNT_ID` | ID da conta (12 dígitos) |
 | `ADMIN_EMAIL` | e-mail do primeiro administrador |
 | `DOMAIN_NAME` | *(opcional)* domínio do site, ex.: `artur.dev` |
 | `ACME_EMAIL` | *(opcional)* e-mail para o Let's Encrypt |
+
+Os dois primeiros precisam ser **secrets**, não variáveis: variáveis não são mascaradas nos logs.
 
 **Settings → Environments → New environment → `production`**: adicione a si mesmo em *Required
 reviewers*. Os jobs `apply` e `destroy` esperam essa aprovação.

@@ -62,9 +62,3 @@ variable "force_destroy_buckets" {
   type        = bool
   default     = false
 }
-
-variable "github_repository" {
-  description = "Repositório (OWNER/REPO) autorizado a assumir a role de deploy via OIDC."
-  type        = string
-  default     = "artur-ronconi/artur.dev"
-}

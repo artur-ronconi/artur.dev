@@ -1,9 +1,12 @@
 name: Terraform init
-description: Assume a role da AWS via OIDC, instala o Terraform e inicializa o backend S3.
+description: Configura as credenciais da AWS, instala o Terraform e inicializa o backend S3.
 
 inputs:
-  account-id:
-    description: ID da conta AWS (repo variable AWS_ACCOUNT_ID).
+  aws-access-key-id:
+    description: Secret TERRAFORM_AWS_ACCESS_KEY_ID.
+    required: true
+  aws-secret-access-key:
+    description: Secret TERRAFORM_AWS_ACCESS_SECRET_KEY.
     required: true
   terraform-version:
     description: Versão do Terraform.
@@ -12,10 +15,10 @@ inputs:
 runs:
   using: composite
   steps:
-    # Nomes fixos, criados à mão no console (docs/deploy-aws.md).
     - uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: arn:aws:iam::${{ inputs.account-id }}:role/artur-dev-github-terraform
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
         aws-region: us-east-1
 
     - uses: hashicorp/setup-terraform@v3
@@ -23,9 +26,10 @@ runs:
         terraform_version: ${{ inputs.terraform-version }}
         terraform_wrapper: false
 
+    # Bucket de estado criado à mão no console (docs/deploy-aws.md); o nome usa o ID da conta.
     - name: terraform init
       shell: bash
       working-directory: infra
-      env:
-        STATE_BUCKET: artur-dev-tfstate-${{ inputs.account-id }}
-      run: terraform init -input=false -backend-config="bucket=$STATE_BUCKET"
+      run: |
+        account_id="$(aws sts get-caller-identity --query Account --output text)"
+        terraform init -input=false -backend-config="bucket=artur-dev-tfstate-$account_id"
