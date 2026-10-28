@@ -12,7 +12,7 @@ terraform {
     }
   }
 
-  # Estado remoto no S3 (criado por infra/bootstrap). O bucket é informado na hora:
+  # Estado remoto no S3 (criado à mão no console: docs/deploy-aws.md). O bucket é informado na hora:
   #   terraform init -backend-config="bucket=<bucket-de-estado>"
   backend "s3" {
     key          = "artur-dev/terraform.tfstate"

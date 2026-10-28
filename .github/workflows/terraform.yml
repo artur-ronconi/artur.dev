@@ -20,6 +20,10 @@ on:
         description: "destroy: apagar também os buckets de mídia e backups, mesmo com objetos (irreversível)"
         type: boolean
         default: false
+      replace_instance:
+        description: "apply: recriar a instância (aplica mudanças de cloud-init/AMI; o SQLite é perdido — restaure o backup)"
+        type: boolean
+        default: false
       confirm:
         description: 'destroy: digite "destroy" para confirmar'
         type: string
@@ -54,8 +58,7 @@ jobs:
 
       - uses: ./.github/actions/terraform-init
         with:
-          role-arn: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
-          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          account-id: ${{ vars.AWS_ACCOUNT_ID }}
 
       - name: terraform fmt
         run: terraform fmt -check -recursive
@@ -86,11 +89,15 @@ jobs:
 
       - uses: ./.github/actions/terraform-init
         with:
-          role-arn: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
-          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          account-id: ${{ vars.AWS_ACCOUNT_ID }}
 
       - name: terraform apply
-        run: terraform apply -input=false -auto-approve -no-color -lock-timeout=5m
+        env:
+          REPLACE_INSTANCE: ${{ inputs.replace_instance }}
+        run: |
+          args=()
+          if [ "$REPLACE_INSTANCE" = "true" ]; then args+=(-replace=aws_instance.app); fi
+          terraform apply -input=false -auto-approve -no-color -lock-timeout=5m "${args[@]}"
 
       - name: Saídas
         run: |
@@ -121,8 +128,7 @@ jobs:
 
       - uses: ./.github/actions/terraform-init
         with:
-          role-arn: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
-          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          account-id: ${{ vars.AWS_ACCOUNT_ID }}
 
       # force_destroy só vale se já estiver gravado no estado: aplica nos buckets antes.
       - name: Liberar a remoção dos buckets
