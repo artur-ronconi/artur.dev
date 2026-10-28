@@ -51,3 +51,9 @@ variable "force_destroy_buckets" {
   type        = bool
   default     = false
 }
+
+variable "vpc_cidr" {
+  description = "Bloco CIDR da VPC criada para o projeto."
+  type        = string
+  default     = "10.20.0.0/16"
+}

@@ -25,7 +25,8 @@ GitHub Actions ──(chaves IAM)──> S3 (releases/<imagem>.tar.gz)
 
 | Arquivo | Conteúdo |
 | --- | --- |
-| `main.tf` | Security group (80/443), IP elástico e a instância (na VPC e subnet padrão) |
+| `network.tf` | VPC própria, internet gateway, subnet pública e rota (a conta não precisa de VPC padrão) |
+| `main.tf` | Security group (80/443), IP elástico e a instância |
 | `iam.tf` | Role e instance profile da instância (lê o segredo, usa o S3, aceita SSM) |
 | `s3.tf` | Bucket de **mídia** (leitura pública só em `uploads/*`) e bucket de **backups/releases** |
 | `cloud-init.yaml.tftpl`, `files/` | Primeiro boot: Docker, swap, scripts `artur-deploy` e `artur-backup` |

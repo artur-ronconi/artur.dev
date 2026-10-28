@@ -1,6 +1,7 @@
 resource "aws_security_group" "app" {
   name        = "${var.project_name}-web"
   description = "HTTP/HTTPS publico. Sem SSH: o acesso administrativo e via SSM."
+  vpc_id      = aws_vpc.main.id
 
   ingress {
     description = "HTTP (Lets Encrypt e redirecionamento)"
@@ -30,11 +31,14 @@ resource "aws_eip" "app" {
   domain = "vpc"
 
   tags = { Name = var.project_name }
+
+  depends_on = [aws_internet_gateway.main]
 }
 
 resource "aws_instance" "app" {
   ami                    = nonsensitive(data.aws_ssm_parameter.al2023_arm64.value)
   instance_type          = var.instance_type
+  subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.app.id]
   iam_instance_profile   = aws_iam_instance_profile.instance.name
 
