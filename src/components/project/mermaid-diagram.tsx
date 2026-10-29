@@ -1,10 +1,99 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { AlertTriangle, Maximize2, X } from "lucide-react";
+import { useEffect, useId, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { AlertTriangle, Maximize2, Scan, X, ZoomIn, ZoomOut } from "lucide-react";
 
 import { useTheme } from "@/components/site/theme";
 import { cn } from "@/lib/utils";
+
+const MIN_ZOOM = 0.4;
+const MAX_ZOOM = 8;
+
+/** Área estilo canvas: scroll amplia em torno do cursor, arrastar move. */
+function PanZoom({ children, className }: { children: ReactNode; className?: string }) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const [view, setView] = useState({ k: 1, x: 0, y: 0 });
+
+  const zoomAt = (factor: number, px: number, py: number) =>
+    setView((current) => {
+      const k = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current.k * factor));
+      return { k, x: px - ((px - current.x) / current.k) * k, y: py - ((py - current.y) / current.k) * k };
+    });
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const rect = frame.getBoundingClientRect();
+      zoomAt(Math.exp(-event.deltaY * 0.0015), event.clientX - rect.left, event.clientY - rect.top);
+    };
+    frame.addEventListener("wheel", onWheel, { passive: false });
+    return () => frame.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const zoomCenter = (factor: number) => {
+    const rect = frameRef.current?.getBoundingClientRect();
+    if (rect) zoomAt(factor, rect.width / 2, rect.height / 2);
+  };
+
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drag.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const origin = drag.current;
+    if (!origin) return;
+    const dx = event.clientX - origin.x;
+    const dy = event.clientY - origin.y;
+    drag.current = { x: event.clientX, y: event.clientY };
+    setView((current) => ({ ...current, x: current.x + dx, y: current.y + dy }));
+  };
+
+  const tool =
+    "rounded-md border border-line bg-base-850 p-1.5 text-ink-muted transition-colors hover:text-accent disabled:opacity-40";
+
+  return (
+    <div className={cn("grid-backdrop relative overflow-hidden", className)}>
+      <div
+        ref={frameRef}
+        className="h-full w-full cursor-grab touch-none select-none active:cursor-grabbing"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
+      >
+        <div
+          className="flex min-h-full w-full origin-top-left items-center p-5 [&>*]:w-full"
+          style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}
+        >
+          {children}
+        </div>
+      </div>
+
+      <div className="absolute bottom-3 right-3 flex gap-1" onPointerDown={(event) => event.stopPropagation()}>
+        <button type="button" aria-label="Reduzir" className={tool} onClick={() => zoomCenter(1 / 1.25)} disabled={view.k <= MIN_ZOOM}>
+          <ZoomOut size={14} />
+        </button>
+        <button type="button" aria-label="Ampliar" className={tool} onClick={() => zoomCenter(1.25)} disabled={view.k >= MAX_ZOOM}>
+          <ZoomIn size={14} />
+        </button>
+        <button
+          type="button"
+          aria-label="Enquadrar"
+          className={tool}
+          onClick={() => setView({ k: 1, x: 0, y: 0 })}
+          disabled={view.k === 1 && view.x === 0 && view.y === 0}
+        >
+          <Scan size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Renders a Mermaid architecture diagram.
@@ -116,26 +205,26 @@ export function MermaidDiagram({
         </figcaption>
       )}
 
-      <div className="grid-backdrop overflow-x-auto p-5">
-        {error ? (
-          <p className="flex items-center gap-2 font-mono text-[12px] text-amber">
-            <AlertTriangle size={15} />
-            Diagrama inválido: {error}
-          </p>
-        ) : svg ? (
+      {error ? (
+        <p className="flex items-center gap-2 p-5 font-mono text-[12px] text-amber">
+          <AlertTriangle size={15} />
+          Diagrama inválido: {error}
+        </p>
+      ) : svg ? (
+        <PanZoom className="h-[440px]">
           <div
             ref={containerRef}
             className="[&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full"
             // Mermaid output is generated locally with securityLevel "strict".
             dangerouslySetInnerHTML={{ __html: svg }}
           />
-        ) : (
-          <div className="flex h-40 items-center justify-center">
-            <span className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-accent" />
-            <span className="sr-only">Carregando diagrama…</span>
-          </div>
-        )}
-      </div>
+        </PanZoom>
+      ) : (
+        <div className="grid-backdrop flex h-40 items-center justify-center">
+          <span className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-accent" />
+          <span className="sr-only">Carregando diagrama…</span>
+        </div>
+      )}
 
       {zoomed && svg ? (
         <div
@@ -153,11 +242,14 @@ export function MermaidDiagram({
           >
             <X size={18} />
           </button>
-          <div
-            className="max-h-full w-full max-w-5xl overflow-auto rounded-xl border border-line bg-base-900 p-6 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:w-full"
-            onClick={(event) => event.stopPropagation()}
-            dangerouslySetInnerHTML={{ __html: svg }}
-          />
+          <div className="w-full max-w-6xl" onClick={(event) => event.stopPropagation()}>
+            <PanZoom className="h-[85vh] rounded-xl border border-line bg-base-900">
+              <div
+                className="[&_svg]:mx-auto [&_svg]:h-auto [&_svg]:w-full"
+                dangerouslySetInnerHTML={{ __html: svg }}
+              />
+            </PanZoom>
+          </div>
         </div>
       ) : null}
     </figure>

@@ -49,6 +49,8 @@ import { buildWaves } from "@/lib/flow/simulate";
 import { cn } from "@/lib/utils";
 
 const MAX_CANVAS_HEIGHT = 560;
+const MIN_ZOOM = 0.4;
+const MAX_ZOOM = 8;
 const WAVE_MS = 1100;
 
 /** Ícone do nó: primeiro pelo que o rótulo diz, depois pela forma usada no diagrama. */
@@ -287,25 +289,21 @@ export function FlowExplorer({
   // ------------------------------------------------------- zoom / pan
   const zoomBy = (factor: number) =>
     setView((current) => {
-      const k = Math.min(3, Math.max(1, current.k * factor));
+      const k = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current.k * factor));
       // Mantém o centro do diagrama no lugar ao ampliar.
       const cx = layout.width / 2;
       const cy = layout.height / 2;
-      return k === 1
-        ? { k: 1, x: 0, y: 0 }
-        : { k, x: cx - ((cx - current.x) / current.k) * k, y: cy - ((cy - current.y) / current.k) * k };
+      return { k, x: cx - ((cx - current.x) / current.k) * k, y: cy - ((cy - current.y) / current.k) * k };
     });
 
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
-    // Só amplia com Ctrl/⌘ pressionado, para não sequestrar a rolagem da página.
+    // Como num canvas: o scroll amplia e reduz em torno do cursor.
     const onWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
       setView((current) => {
-        const k = Math.min(3, Math.max(1, current.k * (event.deltaY < 0 ? 1.12 : 0.89)));
-        if (k === 1) return { k: 1, x: 0, y: 0 };
+        const k = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current.k * Math.exp(-event.deltaY * 0.0015)));
         const rect = svg.getBoundingClientRect();
         const unit = Math.max(layout.width / rect.width, layout.height / rect.height);
         const px = layout.width / 2 + (event.clientX - rect.left - rect.width / 2) * unit;
@@ -395,10 +393,10 @@ export function FlowExplorer({
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
-            <ToolButton label="Reduzir" onClick={() => zoomBy(1 / 1.25)} disabled={view.k <= 1}>
+            <ToolButton label="Reduzir" onClick={() => zoomBy(1 / 1.25)} disabled={view.k <= MIN_ZOOM}>
               <ZoomOut size={14} />
             </ToolButton>
-            <ToolButton label="Ampliar" onClick={() => zoomBy(1.25)} disabled={view.k >= 3}>
+            <ToolButton label="Ampliar" onClick={() => zoomBy(1.25)} disabled={view.k >= MAX_ZOOM}>
               <ZoomIn size={14} />
             </ToolButton>
             <ToolButton
@@ -635,7 +633,7 @@ export function FlowExplorer({
 
             <p className="pointer-events-none hidden items-center gap-1.5 px-3 pb-2 font-mono text-[10.5px] text-ink-faint sm:flex">
               <MousePointerClick size={12} aria-hidden />
-              clique em um componente · arraste para mover · Ctrl + scroll para zoom
+              clique em um componente · arraste para mover · scroll para zoom
             </p>
           </div>
 
