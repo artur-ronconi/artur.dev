@@ -56,13 +56,19 @@ const SHAPES: Array<{ open: string; close: string; shape: FlowShape }> = [
 ];
 
 /** Ligações com texto embutido: `-- texto -->`, `-. texto .->`, `== texto ==>`. */
-const TEXT_LINKS: Array<{ pattern: RegExp; style: FlowEdge["style"] }> = [
+const TEXT_LINKS: Array<{ pattern: RegExp; style: FlowEdge["style"]; both?: boolean }> = [
+  { pattern: /^<--\s*([^-|>\s][^|>]*?)\s*-{2,}>/, style: "solid", both: true },
+  { pattern: /^<-\.\s*([^.|>\s][^|>]*?)\s*\.-+>/, style: "dotted", both: true },
+  { pattern: /^<==\s*([^=|>\s][^|>]*?)\s*={2,}>/, style: "thick", both: true },
   { pattern: /^--\s*([^-|>\s][^|>]*?)\s*-{2,}>/, style: "solid" },
   { pattern: /^-\.\s*([^.|>\s][^|>]*?)\s*\.-+>/, style: "dotted" },
   { pattern: /^==\s*([^=|>\s][^|>]*?)\s*={2,}>/, style: "thick" },
 ];
 
-const PLAIN_LINKS: Array<{ pattern: RegExp; style: FlowEdge["style"] }> = [
+const PLAIN_LINKS: Array<{ pattern: RegExp; style: FlowEdge["style"]; both?: boolean }> = [
+  { pattern: /^<-\.+->/, style: "dotted", both: true },
+  { pattern: /^<={2,}>/, style: "thick", both: true },
+  { pattern: /^<-{2,}>/, style: "solid", both: true },
   { pattern: /^-\.+->/, style: "dotted" },
   { pattern: /^-\.+-/, style: "dotted" },
   { pattern: /^={2,}>/, style: "thick" },
@@ -214,16 +220,16 @@ function parseStatement(
     return ids;
   };
 
-  const readLink = (): { label: string | null; style: FlowEdge["style"] } => {
-    for (const { pattern, style } of TEXT_LINKS) {
+  const readLink = (): { label: string | null; style: FlowEdge["style"]; both: boolean } => {
+    for (const { pattern, style, both } of TEXT_LINKS) {
       const match = rest.match(pattern);
       if (match) {
         rest = rest.slice(match[0].length);
-        return { label: cleanLabel(match[1] ?? ""), style };
+        return { label: cleanLabel(match[1] ?? ""), style, both: Boolean(both) };
       }
     }
 
-    for (const { pattern, style } of PLAIN_LINKS) {
+    for (const { pattern, style, both } of PLAIN_LINKS) {
       const match = rest.match(pattern);
       if (!match) continue;
       rest = rest.slice(match[0].length);
@@ -231,7 +237,7 @@ function parseStatement(
 
       const piped = rest.match(/^\|([^|]*)\|/);
       if (piped) rest = rest.slice(piped[0].length);
-      return { label: piped ? cleanLabel(piped[1] ?? "") || null : null, style };
+      return { label: piped ? cleanLabel(piped[1] ?? "") || null : null, style, both: Boolean(both) };
     }
 
     throw new Unsupported();
@@ -245,9 +251,12 @@ function parseStatement(
     skip();
     const targets = readGroup();
 
+    const { both, ...edge } = link;
     for (const from of sources) {
       for (const to of targets) {
-        edges.push({ id: `e${edges.length}`, from, to, ...link });
+        edges.push({ id: `e${edges.length}`, from, to, ...edge });
+        // Seta nos dois sentidos: uma aresta de ida e outra de volta.
+        if (both) edges.push({ id: `e${edges.length}`, from: to, to: from, ...edge });
       }
     }
     sources = targets;

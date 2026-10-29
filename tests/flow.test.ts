@@ -64,10 +64,25 @@ describe("parseFlowchart", () => {
     ]);
   });
 
+  it("lê setas nos dois sentidos como uma aresta de ida e outra de volta", () => {
+    const graph = parseFlowchart(`flowchart LR
+  A["Worker"] <--> B[("Banco")]
+  C(["Cliente"]) <-. "WebSocket" .-> A
+  D --> E & F <--> G`)!;
+
+    expect(graph).not.toBeNull();
+    const pairs = graph.edges.map((edge) => `${edge.from}>${edge.to}`);
+    expect(pairs).toEqual(expect.arrayContaining(["A>B", "B>A", "C>A", "A>C", "D>E", "D>F", "E>G", "G>E", "F>G", "G>F"]));
+    expect(graph.edges.find((edge) => edge.from === "C" && edge.to === "A")).toMatchObject({
+      label: "WebSocket",
+      style: "dotted",
+    });
+  });
+
   it("devolve null para o que não é um fluxograma suportado", () => {
     expect(parseFlowchart("sequenceDiagram\n  A->>B: oi")).toBeNull();
     expect(parseFlowchart("flowchart RL\n  A --> B")).toBeNull();
-    expect(parseFlowchart("flowchart LR\n  A <--> B")).toBeNull();
+    expect(parseFlowchart("flowchart LR\n  A --o B")).toBeNull();
     expect(parseFlowchart("flowchart LR\n  subgraph X\n  A --> B")).toBeNull();
   });
 });
