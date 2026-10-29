@@ -1,3 +1,5 @@
+import Image from "next/image";
+import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 import { DynamicIcon } from "@/components/icons/dynamic-icon";
@@ -93,7 +95,20 @@ export function ExperienceHighlight({ project }: { project: FullProject }) {
           </div>
 
           <Reveal delay={120} className="min-w-0">
-            {diagram ? (
+            {project.coverImageUrl ? (
+              <Link
+                href={`/projetos/${project.slug}`}
+                className="group relative block aspect-[16/10] h-full min-h-[240px] w-full overflow-hidden rounded-xl border border-line bg-base-900"
+              >
+                <Image
+                  src={project.coverImageUrl}
+                  alt={project.coverImageAlt ?? `Captura do projeto ${project.title}`}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                />
+              </Link>
+            ) : diagram ? (
               <ArchitectureDiagram
                 source={diagram.source}
                 title={diagram.title}
@@ -103,7 +118,7 @@ export function ExperienceHighlight({ project }: { project: FullProject }) {
             ) : (
               <div className="panel grid-backdrop flex h-full min-h-[240px] items-center justify-center p-6 text-center">
                 <p className="max-w-xs text-[13px] text-ink-faint">
-                  Cadastre um diagrama de arquitetura neste projeto para exibi-lo aqui.
+                  Cadastre uma imagem de capa ou um diagrama neste projeto para exibi-lo aqui.
                 </p>
               </div>
             )}
