@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Save } from "lucide-react";
+import { useRef, useState } from "react";
+import { Loader2, Save, Upload } from "lucide-react";
 
 import { ImageField } from "@/components/admin/image-field";
 import { useCsrf } from "@/components/admin/csrf";
 import { useToast } from "@/components/admin/toast";
+import { useUpload } from "@/components/admin/use-upload";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/field";
 import { saveSettingsAction } from "@/server/actions/portfolio";
@@ -43,6 +44,9 @@ export type SettingsValues = {
 export function SettingsForm({ initial }: { initial: SettingsValues }) {
   const csrf = useCsrf();
   const toast = useToast();
+  const send = useUpload();
+  const resumeInput = useRef<HTMLInputElement>(null);
+  const [uploadingResume, setUploadingResume] = useState(false);
   const router = useRouter();
 
   const [values, setValues] = useState(initial);
@@ -66,6 +70,20 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
       router.refresh();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const uploadResume = async (file: File) => {
+    setUploadingResume(true);
+    try {
+      const stored = await send(file);
+      if (stored) {
+        set("resumeUrl", stored.url);
+        toast.success("Currículo enviado. Salve para publicar.");
+      }
+    } finally {
+      setUploadingResume(false);
+      if (resumeInput.current) resumeInput.current.value = "";
     }
   };
 
@@ -108,7 +126,36 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
             error={error("resumeUrl")}
             description="Link do PDF exibido no botão “Baixar CV”."
           >
-            <Input id="resumeUrl" value={values.resumeUrl ?? ""} onChange={(e) => set("resumeUrl", e.target.value || null)} />
+            <div className="space-y-2">
+              <Input id="resumeUrl" value={values.resumeUrl ?? ""} onChange={(e) => set("resumeUrl", e.target.value || null)} />
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  ref={resumeInput}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadResume(file);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => resumeInput.current?.click()}
+                  disabled={uploadingResume}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[12.5px] text-ink-muted transition-colors hover:text-accent disabled:opacity-60"
+                >
+                  {uploadingResume ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                  {uploadingResume ? "Enviando…" : "Enviar PDF"}
+                </button>
+                {values.resumeUrl ? (
+                  <a href={values.resumeUrl} target="_blank" rel="noreferrer" className="text-[12.5px] text-accent hover:opacity-80">
+                    Abrir currículo atual
+                  </a>
+                ) : null}
+                <span className="text-[12px] text-ink-faint">Depois de enviar, clique em salvar para publicar.</span>
+              </div>
+            </div>
           </Field>
         </div>
       </div>

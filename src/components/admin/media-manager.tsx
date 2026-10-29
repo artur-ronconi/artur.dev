@@ -94,6 +94,15 @@ export function MediaManager({ assets, driver }: { assets: Asset[]; driver: stri
               <div className="relative aspect-[4/3] w-full bg-base-900">
                 {asset.mimeType.startsWith("video/") ? (
                   <video src={`${asset.url}#t=0.1`} preload="metadata" controls muted className="h-full w-full object-contain" />
+                ) : asset.mimeType === "application/pdf" ? (
+                  <a
+                    href={asset.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-full w-full items-center justify-center font-mono text-[12px] text-ink-muted hover:text-accent"
+                  >
+                    PDF · abrir
+                  </a>
                 ) : (
                   <Image
                     src={asset.url}

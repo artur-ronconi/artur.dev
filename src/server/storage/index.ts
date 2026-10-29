@@ -24,6 +24,9 @@ export const IMAGE_MIME_TYPES = [
 /** Formatos que os navegadores reproduzem direto na tag <video>. */
 export const VIDEO_MIME_TYPES = ["video/mp4", "video/webm"] as const;
 
+/** Documentos aceitos (currículo). Mesmo limite das imagens. */
+export const DOCUMENT_MIME_TYPES = ["application/pdf"] as const;
+
 const isOneOf = (types: readonly string[], mime: string) => types.includes(mime);
 
 export type StoredFile = { key: string; url: string };
@@ -40,6 +43,7 @@ function extensionFor(mime: string, fallbackName: string): string {
     "image/gif": "gif",
     "video/mp4": "mp4",
     "video/webm": "webm",
+    "application/pdf": "pdf",
   };
   return map[mime] ?? (path.extname(fallbackName).replace(".", "") || "bin");
 }
@@ -94,9 +98,9 @@ function publicUrlFor(key: string): string {
  */
 export async function storeFile(file: File): Promise<StoredFile> {
   const video = isOneOf(VIDEO_MIME_TYPES, file.type);
-  if (!video && !isOneOf(IMAGE_MIME_TYPES, file.type)) {
+  if (!video && !isOneOf(IMAGE_MIME_TYPES, file.type) && !isOneOf(DOCUMENT_MIME_TYPES, file.type)) {
     throw new UploadError(
-      `Formato não suportado: ${file.type || "desconhecido"}. Envie imagens (JPG, PNG, WebP, AVIF, SVG, GIF) ou vídeos (MP4, WebM).`,
+      `Formato não suportado: ${file.type || "desconhecido"}. Envie imagens (JPG, PNG, WebP, AVIF, SVG, GIF), vídeos (MP4, WebM) ou PDF.`,
     );
   }
 
